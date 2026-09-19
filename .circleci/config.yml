@@ -1,0 +1,69 @@
+version: 2.1
+
+# Builds the self-contained macOS arm64 pi-host bundle on CircleCI.
+# Usage: fork this repository, connect the fork to CircleCI, and run the
+# `build-pi-host-macos-arm64` workflow. Download the tarball from the job's
+# Artifacts, copy it to the target Mac, run install.sh, then start
+# `pi-host.js --pair` and pair it from PI-Desktop's Remote Hosts page.
+#
+# The bundle version equals the checked-out commit's package.json version.
+# It must match the desktop version exactly (RACP pins capabilities to one
+# version), so trigger this workflow on the same tag as the installed desktop.
+
+jobs:
+  build-pi-host-macos-arm64:
+    macos:
+      xcode: "16.0.0"
+    resource_class: macos.m1.medium
+    steps:
+      - checkout
+      - run:
+          name: Install Rust
+          command: |
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+            echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> "$BASH_ENV"
+      - run:
+          name: Install Node 24 and pnpm
+          command: |
+            NODE_BIN="$(brew --prefix node@24)/bin"
+            export PATH="$NODE_BIN:$PATH"
+            npm install -g pnpm
+            echo "export PATH=\"$NODE_BIN:\$PATH\"" >> "$BASH_ENV"
+      - run:
+          name: Install JS dependencies
+          command: pnpm install --frozen-lockfile
+      - run:
+          name: Build host-core (Rust)
+          command: |
+            export PATH="$HOME/.cargo/bin:$PATH"
+            cargo build --release --locked -p host-core
+      - run:
+          name: Build JS bundles
+          command: |
+            export PATH="$HOME/.cargo/bin:$PATH"
+            pnpm build:js
+            pnpm --filter @pi-desktop/agent-runtime bundle
+            pnpm --filter @pi-desktop/pi-host build
+      - run:
+          name: Assemble pi-host bundle
+          command: |
+            export PATH="$HOME/.cargo/bin:$PATH"
+            node apps/pi-host/scripts/bundle.mjs --platform darwin --arch arm64
+      - run:
+          name: Package tarball with checksum
+          command: |
+            export PATH="$HOME/.cargo/bin:$PATH"
+            VERSION="$(node -p "require('./apps/pi-host/package.json').version")"
+            name="pi-host-${VERSION}-darwin-arm64"
+            out="apps/pi-host/dist-bundle"
+            tar -czf "$out/${name}.tar.gz" -C "$out" "$name"
+            ( cd "$out" && shasum -a 256 "${name}.tar.gz" > "${name}.tar.gz.sha256" )
+            ls -la "$out"
+      - store_artifacts:
+          path: apps/pi-host/dist-bundle
+          destination: pi-host-darwin-arm64
+
+workflows:
+  build-pi-host-macos-arm64:
+    jobs:
+      - build-pi-host-macos-arm64
