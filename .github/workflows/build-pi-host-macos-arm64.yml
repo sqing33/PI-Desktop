@@ -1,7 +1,8 @@
 name: Build pi-host macOS arm64
 
 # Manually triggered build of the self-contained macOS arm64 pi-host bundle.
-# The public fork runs this on GitHub's free Apple Silicon runner.
+# Runs on the standard Apple Silicon runner (free for public repositories);
+# the *-xlarge labels are paid larger runners.
 #
 # The bundle version equals the checked-out ref's package.json version and
 # must match the desktop version exactly (RACP pins capabilities to one
@@ -16,7 +17,7 @@ on:
 
 jobs:
   build-pi-host-macos-arm64:
-    runs-on: macos-14-xlarge
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
 
