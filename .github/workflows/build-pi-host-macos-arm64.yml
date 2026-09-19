@@ -1,0 +1,62 @@
+name: Build pi-host macOS arm64
+
+# Manually triggered build of the self-contained macOS arm64 pi-host bundle.
+# The public fork runs this on GitHub's free Apple Silicon runner.
+#
+# The bundle version equals the checked-out ref's package.json version and
+# must match the desktop version exactly (RACP pins capabilities to one
+# version). When the installed desktop is an official release, select the
+# matching tag (e.g. v0.15.1-beta.6) in the "Run workflow" dialog instead of
+# main. Download the tarball + .sha256 from the job's Artifacts, verify the
+# checksum, copy it to the target Mac, run install.sh, then start
+# `pi-host.js --pair` and pair it from PI-Desktop's Remote Hosts page.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-pi-host-macos-arm64:
+    runs-on: macos-14-xlarge
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build host-core
+        run: cargo build --release --locked -p host-core
+
+      - name: Build JS bundles
+        run: |
+          pnpm build:js
+          pnpm --filter @pi-desktop/agent-runtime bundle
+          pnpm --filter @pi-desktop/pi-host build
+
+      - name: Assemble pi-host bundle
+        run: node apps/pi-host/scripts/bundle.mjs --platform darwin --arch arm64
+
+      - name: Package tarball with checksum
+        run: |
+          VERSION="$(node -p "require('./apps/pi-host/package.json').version")"
+          name="pi-host-${VERSION}-darwin-arm64"
+          out="apps/pi-host/dist-bundle"
+          tar -czf "$out/${name}.tar.gz" -C "$out" "$name"
+          ( cd "$out" && shasum -a 256 "${name}.tar.gz" > "${name}.tar.gz.sha256" )
+          ls -la "$out"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pi-host-darwin-arm64
+          path: |
+            apps/pi-host/dist-bundle/pi-host-*-darwin-arm64.tar.gz
+            apps/pi-host/dist-bundle/pi-host-*-darwin-arm64.tar.gz.sha256
+          if-no-files-found: error
