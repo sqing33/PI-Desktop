@@ -13,6 +13,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   THINKING_LEVELS,
+  canonicalThinkingLevel,
   modelIdsMatch,
   type AppSettings,
   type ThinkingLevel,
@@ -114,7 +115,7 @@ export function EnhancementModelCard() {
   const storedReasoning = settings?.promptEnhancementThinkingLevel ?? "off";
   const reasoning = useMemo(() => {
     if (!reasoningProvider) return storedReasoning;
-    return thinkingLevelForProvider(reasoningProvider, storedReasoning);
+    return canonicalThinkingLevel(thinkingLevelForProvider(reasoningProvider, storedReasoning));
   }, [reasoningProvider, storedReasoning]);
 
   // Every hook runs before this: `settings` arrives after the first bootstrap,
@@ -148,7 +149,7 @@ export function EnhancementModelCard() {
       promptEnhancementProviderId: providerId,
       promptEnhancementModelId: modelId,
       promptEnhancementThinkingLevel: nextProvider
-        ? thinkingLevelForProvider(nextProvider, stored)
+        ? canonicalThinkingLevel(thinkingLevelForProvider(nextProvider, stored))
         : stored,
     });
     setPicking(false);
@@ -304,7 +305,9 @@ export function EnhancementModelCard() {
                 // Clamp through the same resolver the row displays, so the value
                 // stored is always one this model can run.
                 promptEnhancementThinkingLevel: reasoningProvider
-                  ? thinkingLevelForProvider(reasoningProvider, id as ThinkingLevel)
+                  ? canonicalThinkingLevel(
+                      thinkingLevelForProvider(reasoningProvider, id as ThinkingLevel),
+                    )
                   : (id as ThinkingLevel),
               })
             }

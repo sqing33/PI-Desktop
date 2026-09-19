@@ -2716,8 +2716,9 @@ reasoning-level control.
   `role="menu"`. Its root has exactly two `role="menuitem"` entries. The Model
   submenu has a search input and sticky provider headings, while the Reasoning
   level submenu starts with `Current model <model> supports these reasoning
-  levels` and lists the selected model binding's enabled levels in canonical
-  order.
+  levels` and lists `omit` then the selected model binding's enabled levels in
+  canonical order. `omit` persists as the session thinking level and sends no
+  provider thinking override (ADR 0295).
   Model-row reasoning badges use published reasoning metadata; vision badges
   use the effective image-input capability for the row's provider binding
   (`supportsImages` when explicitly set, published image input otherwise).

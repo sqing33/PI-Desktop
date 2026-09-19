@@ -62,8 +62,10 @@ Settings is a **full-window page** that replaces the app sidebar + main chrome (
   When search filters the directory, empty clusters and their headings disappear.
 - Loaded plugin Settings entries may appear only in a final **Extensions** group
   after all core groups. The host owns their ordering, search result, titlebar
-  and fallback to General. Their content is a sandboxed plugin page measured
-  into the content pane; it never covers the rail or titlebar.
+  and fallback to General. The rail icon is the destination's host token
+  (scenic themes: Lucide `Palette` via `pluginViewIcon`), never plugin markup
+  and never a generic Skills book glyph. Their content is a sandboxed plugin
+  page measured into the content pane; it never covers the rail or titlebar.
 - Main content pane on primary surface with large section title + elevated
   rounded cards of rows. Its content uses the full width available after the
   fixed rail and pane gutters, and resizes continuously with the window.
@@ -452,9 +454,11 @@ system while preserving their different data ownership:
   Enablement flips locally first and reverts only if the host refuses, and
   busy state is scoped to the row that is working — one pending request never
   disables the rest of the page. Empty states are quiet centered
-  glyph-and-copy blocks inside the panel; an empty level offers the same
-  primary action rather than being a dead end, and a search with no matches
-  says so and suggests widening the level filter.
+  glyph-and-copy blocks inside the panel. The glyph is a host Lucide icon
+  (`IconBookOpen` / `IconServer` / `IconBot`) inside a chip wrapper; do not
+  pad or resize the SVG itself, because Lucide already sets inline size.
+  An empty level offers the same primary action rather than being a dead end,
+  and a search with no matches says so and suggests widening the level filter.
 - When the viewport is narrow the toolbar stacks: the segmented control spans
   the width with evenly divided segments, search sits below it, and the
   actions wrap left-aligned. Group headers drop the resolved path so row copy

@@ -6,6 +6,7 @@ import type {
   ModelModalities,
   ModelProviderMetadata,
   ModelReasoningOption,
+  SessionThinkingLevel,
   ThinkingLevel,
 } from "@pi-desktop/shared";
 
@@ -74,12 +75,28 @@ const THINKING_LEVELS: ThinkingLevel[] = [
   "max",
 ];
 
+/** Agent bookkeeping value: omit is stored as off so pi-ai does not synthesize a level. */
+export function agentThinkingLevel(level: SessionThinkingLevel): ThinkingLevel {
+  return level === "omit" ? "off" : level;
+}
+
+/** Null the Responses/simple-stream `off` fallback so omit sends no thinking field. */
+export function omitThinkingModel<T extends { thinkingLevelMap?: Partial<Record<string, string | null>> }>(
+  model: T,
+): T {
+  return {
+    ...model,
+    thinkingLevelMap: { ...model.thinkingLevelMap, off: null },
+  };
+}
+
 /** Apply the canonical nearest-supported-level rule to catalog metadata. */
 export function clampThinkingLevel(
   capabilities: ThinkingCapabilitySet,
-  requested: ThinkingLevel,
-): ThinkingLevel {
+  requested: SessionThinkingLevel,
+): SessionThinkingLevel {
   if (!capabilities.supportsReasoning) return "off";
+  if (requested === "omit") return "omit";
   const supported = new Set(capabilities.supportedThinkingLevels ?? ["off"]);
   if (supported.has(requested)) return requested;
 

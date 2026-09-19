@@ -9,7 +9,9 @@ import {
 import type { ModelConfig, ThinkingCapabilitySet } from "./thinking-level.js";
 
 export {
+  agentThinkingLevel,
   clampThinkingLevel,
+  omitThinkingModel,
   type ModelConfig,
   type ThinkingCapabilitySet,
 } from "./thinking-level.js";

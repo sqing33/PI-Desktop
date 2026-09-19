@@ -324,7 +324,8 @@ to later refresh and inference; the vendor picker does not collect them.
   only session metadata and does not update `updated_at`, transcript content,
   message count, or historical notification title snapshots.
 - `session.configure` — atomically persists `mode`, `providerId`, `modelId`,
-  and optional `thinkingLevel` for the next pi turn; omitting/null
+  and optional `thinkingLevel` (`off|minimal|low|medium|high|xhigh|max|omit`)
+  for the next pi turn; omitting/null
   `thinkingLevel` preserves the current value; invalid modes or levels return
   `INVALID_PARAMS`; mode is `plan | goal | agent` and changing any session
   configuration is allowed only while idle and without a pending/queued/running

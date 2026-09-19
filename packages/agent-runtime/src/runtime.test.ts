@@ -100,8 +100,8 @@ import type {
   CommandShellOption,
   Mode,
   PlanExecution,
+  SessionThinkingLevel,
   SubagentDefinition,
-  ThinkingLevel,
   UiMessage,
 } from "@pi-desktop/shared";
 
@@ -139,7 +139,7 @@ function createRuntime(
   overrides: Partial<{
     provider: RuntimeProviderConfig;
     mode: Mode | "chat";
-    thinkingLevel: ThinkingLevel;
+    thinkingLevel: SessionThinkingLevel;
     history: UiMessage[];
     compaction: ContextCompactionRecord;
     compactionSettings: ContextCompactionSettings;
@@ -2703,6 +2703,43 @@ describe("DesktopAgentRuntime thinking configuration", () => {
     expect(agent.state.thinkingLevel).toBe("off");
     expect(agent.state.model.reasoning).toBe(false);
 
+    await runtime.dispose();
+  });
+
+  it("omits the provider thinking override when the session level is omit", async () => {
+    const responseProvider: RuntimeProviderConfig = {
+      ...provider,
+      id: "responses",
+      name: "Responses",
+      apiStyle: "responses",
+      baseUrl: "https://example.invalid/v1",
+      apiKey: "test-key",
+      supportsReasoning: true,
+      supportedThinkingLevels: ["off", "high"],
+      modelConfig: {
+        source: "generic",
+        name: "Responses model",
+        baseUrl: "https://example.invalid/v1",
+        reasoning: true,
+        thinkingLevelMap: { off: "none", high: "high" },
+        input: ["text"],
+        contextWindow: 128_000,
+        maxTokens: 8_192,
+      },
+    };
+    const runtime = createRuntime({ provider: responseProvider, thinkingLevel: "omit" });
+    const agent = (runtime as any).agent;
+    expect(agent.state.thinkingLevel).toBe("off");
+    expect((runtime as any).thinkingLevel).toBe("omit");
+    const requests: Record<string, unknown>[] = [];
+    const fetch = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      requests.push(JSON.parse(typeof init?.body === "string" ? init.body : "{}"));
+      return new Response("bad request", { status: 400 });
+    });
+    const stream = agent.streamFunction(agent.state.model, { systemPrompt: "system", messages: [], tools: [] }, { fetch });
+    await stream.result();
+    expect(requests).toHaveLength(1);
+    expect(requests[0].reasoning).toBeUndefined();
     await runtime.dispose();
   });
 

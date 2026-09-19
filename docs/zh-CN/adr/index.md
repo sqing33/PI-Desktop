@@ -300,6 +300,7 @@ ADR 记录那些不应被静默改变的架构选择。中文入口与英文索�
 | 0291 | [移除设置页面的语音界面](/adr/0291-remove-speech-settings-ui) | 已接受（修订 ADR 0281） |
 | 0292 | [远端主机的 SSH 引导](/adr/0292-ssh-remote-host-bootstrap) | 已接受实施（D453；ADR 0205 R2b，扩展 ADR 0286） |
 | 0294 | [项目存档改为列表 + 检查器](/adr/0294-project-archive-list-inspector) | 已接受（D455；修订 D267 / D168） |
+| 0295 | [会话思考参数不发送](/adr/0295-session-thinking-parameter-omission) | 已接受（D456；修订 ADR 0194 / ADR 0144 / ADR 0221） |
 
 ## 什么时候看 ADR
 

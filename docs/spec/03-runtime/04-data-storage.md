@@ -392,7 +392,7 @@ CREATE TABLE sessions (
   mode        TEXT NOT NULL DEFAULT 'agent',   -- plan | agent
   thinking_level TEXT NOT NULL DEFAULT 'off'
                 CHECK (thinking_level IN ('off', 'minimal', 'low', 'medium',
-                                          'high', 'xhigh', 'max')),
+                                          'high', 'xhigh', 'max', 'omit')),
   permission_mode TEXT NOT NULL DEFAULT 'inherit' -- D115: inherit follows settings
                 CHECK (permission_mode IN ('inherit', 'ask', 'accept-edits', 'auto')),
   source      TEXT,                            -- import origin: claude-code | codex | opencode | pi
@@ -431,7 +431,9 @@ CREATE INDEX idx_session_import_origins_plugin
   allowed, and built-in runtimes (e.g. `pi`) never exist in `providers`.
 - `thinking_level` is the durable session selector. New and v2-migrated
   sessions default to `off`; capability resolution may clamp the effective
-  request without rewriting the stored preference.
+  request without rewriting the stored preference. Schema v19 adds `omit`
+  (ADR 0295): send no thinking override. Existing rows keep their stored
+  canonical values.
 
 - `project_id` normalizes v1's free-text `project_path` (grouping, badges,
   hover-`+` new-session-in-project all become indexed lookups).

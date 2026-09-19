@@ -46,7 +46,7 @@ import type {
   Mode,
   MessageAttachment,
   PlanExecution,
-  ThinkingLevel,
+  SessionThinkingLevel,
   UiMessage,
 } from "@pi-desktop/shared";
 
@@ -94,7 +94,7 @@ type RuntimeParams = {
   mode?: Mode;
   /** Durable host turn ID for the prompt currently being executed. */
   turnId?: string;
-  thinkingLevel?: ThinkingLevel;
+  thinkingLevel?: SessionThinkingLevel;
   provider: RuntimeProviderConfig;
   commandShell: CommandShellOption;
   pluginTools?: PluginToolDef[];

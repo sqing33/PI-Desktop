@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
-import type { ProjectGroupRecord, SessionSummary } from "@pi-desktop/shared";
+import type { ProjectGroupRecord } from "@pi-desktop/shared";
 import { ErrorCodes } from "@pi-desktop/shared";
 import { useAppStore } from "../stores/app-store";
 import { api } from "../lib/api";
@@ -44,6 +44,7 @@ import {
   sessionTimestamp,
   shortenPath,
   type ProjectIndexItem,
+  type SessionIndexRecord,
   type SortMode,
 } from "../lib/project-archive";
 import { ProjectArchiveIndex } from "../features/projects/ProjectArchiveIndex";
@@ -79,7 +80,7 @@ export function ProjectsPage() {
   const [menuFor, setMenuFor] = useState<string | null>(null);
   // Which row menu item is armed for its second, confirming click.
   const { armed: armedDelete, setArmed: setArmedDelete } = useArmedDelete();
-  const [renameFor, setRenameFor] = useState<SessionSummary | null>(null);
+  const [renameFor, setRenameFor] = useState<SessionIndexRecord | null>(null);
   const [editProjectFor, setEditProjectFor] = useState<{
     path: string;
     name: string;
@@ -165,7 +166,7 @@ export function ProjectsPage() {
   const project = filtered.find((item) => item.path === selectedPath) ?? null;
   const selectedSessions = project
     ? displayedProjectSessions(sessions, project, query)
-    : { related: [] as SessionSummary[], displayed: [] as SessionSummary[], sessionSearchMatch: false };
+    : { related: [] as SessionIndexRecord[], displayed: [] as SessionIndexRecord[], sessionSearchMatch: false };
 
   const activate = async (path: string): Promise<boolean> => {
     try {

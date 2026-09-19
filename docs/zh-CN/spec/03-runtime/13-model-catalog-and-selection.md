@@ -86,11 +86,12 @@ type RecentModelRef = {
 
 - `providerId`
 - `modelId`
-- `thinkingLevel`（`off|minimal|low|medium|high|xhigh|max`）
+- `thinkingLevel`（`off|minimal|low|medium|high|xhigh|max|omit`）
 
 在会话中改变模型或思维水平只会影响后续回合。
 存储的思维偏好在重启后仍然存在；有效请求级别
-在执行时对所选模型进行能力限制。
+在执行时对所选模型绑定的已启用档位钳位，但 `omit` 在推理模型上保留，
+且不发送思考覆盖。
 
 对于新创建的会话，渲染器会解析所选（或应用默认）模型的 `ModelBinding`。
 具有推理能力的模型始于该绑定的 `defaultThinkingLevel`，并钳位到已启用档位；

@@ -9,9 +9,14 @@ export const THINKING_LEVELS = [
   "max",
 ] as const;
 export type ThinkingLevel = (typeof THINKING_LEVELS)[number];
-/** Per-subagent selector values; omit leaves the provider's default untouched. */
-export const SUBAGENT_THINKING_LEVELS = [...THINKING_LEVELS, "omit"] as const;
-export type SubagentThinkingLevel = (typeof SUBAGENT_THINKING_LEVELS)[number];
+/**
+ * Session and subagent selector values. `omit` leaves the provider default
+ * untouched and is not a catalog/binding capability.
+ */
+export const SESSION_THINKING_LEVELS = [...THINKING_LEVELS, "omit"] as const;
+export type SessionThinkingLevel = (typeof SESSION_THINKING_LEVELS)[number];
+export const SUBAGENT_THINKING_LEVELS = SESSION_THINKING_LEVELS;
+export type SubagentThinkingLevel = SessionThinkingLevel;
 
 export type ModelProviderMetadata = string | Record<string, unknown>;
 export type ModelExperimentalMetadata = boolean | Record<string, unknown>;

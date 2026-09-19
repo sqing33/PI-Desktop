@@ -11,6 +11,8 @@ test("scenic extensions are host-rendered, accessible, and have no iframe canvas
   const css = read("src/styles/settings.css");
   assert.match(page, /PluginScenicThemesDestination/);
   assert.doesNotMatch(page, /PluginSettingsDestination/);
+  assert.match(page, /pluginViewIcon\(entry\.icon\)/);
+  assert.doesNotMatch(page, /settings-nav-icon"><IconBookOpen/);
   assert.match(component, /aria-pressed/);
   assert.match(component, /type="range"/);
   assert.match(component, /"Apply"/);

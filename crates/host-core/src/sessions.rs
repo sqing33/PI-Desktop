@@ -39,8 +39,11 @@ pub fn is_contract_mode(mode: &str) -> bool {
 
 /// Values accepted by the persisted per-session thinking selector.  Keep this
 /// list in the host boundary so old clients cannot write arbitrary provider
-/// options into the session row.
-pub const THINKING_LEVELS: [&str; 7] = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
+/// options into the session row. `omit` is a client choice to send no thinking
+/// override; it is not a catalog/binding capability (ADR 0295).
+pub const THINKING_LEVELS: [&str; 8] = [
+    "off", "minimal", "low", "medium", "high", "xhigh", "max", "omit",
+];
 
 pub fn is_valid_thinking_level(level: &str) -> bool {
     THINKING_LEVELS.contains(&level)
@@ -3663,6 +3666,18 @@ mod tests {
             None,
         )
         .is_err());
+        let omitted = configure_session_with_thinking(
+            &db,
+            &session.id,
+            "chat",
+            None,
+            None,
+            Some("omit"),
+            None,
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(omitted.thinking_level, "omit");
     }
 
     #[test]

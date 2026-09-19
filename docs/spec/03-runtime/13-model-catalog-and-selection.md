@@ -158,12 +158,14 @@ Each session stores:
 
 - `providerId`
 - `modelId`
-- `thinkingLevel` (`off|minimal|low|medium|high|xhigh|max`)
+- `thinkingLevel` (`off|minimal|low|medium|high|xhigh|max|omit`)
 
 Changing model or thinking level mid-session affects subsequent turns only.
 The stored thinking preference survives restart; the effective request level
 is clamped against the selected model binding's enabled levels at execution
-time. An empty binding or a binding containing only `off` resolves to `off`.
+time, except `omit`, which is preserved on a reasoning model and sends no
+thinking override. An empty binding or a binding containing only `off`
+resolves to `off`.
 
 For a newly created session, the renderer resolves the selected (or app-default)
 model's `ModelBinding`. A reasoning model starts at that binding's

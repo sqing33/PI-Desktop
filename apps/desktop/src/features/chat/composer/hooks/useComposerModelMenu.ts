@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 import type {
   Mode,
   ProviderPublic,
-  ThinkingLevel,
+  SessionThinkingLevel,
 } from "@pi-desktop/shared";
 import {
   initialThinkingLevelForBinding,
@@ -17,6 +17,7 @@ import {
 } from "../../../../lib/composer-models";
 import { providerThinkingLevels } from "../../../../lib/session-thinking";
 import {
+  sessionThinkingMenuLevels,
   thinkingLevelForProvider,
   thinkingProviderForModel,
   type ComposerMenuView,
@@ -28,7 +29,7 @@ type UseComposerModelMenuOptions = {
   provider: ProviderPublic | undefined;
   modelId: string | undefined;
   thinkingProvider: ProviderPublic | null | undefined;
-  thinkingLevel: ThinkingLevel;
+  thinkingLevel: SessionThinkingLevel;
   controlsBlocked: boolean;
 };
 
@@ -64,9 +65,7 @@ export function useComposerModelMenu({
       provider ? providerModels[provider.id] : undefined,
     );
   const availableThinkingLevels = providerThinkingLevels(thinkingProvider);
-  const thinkingMenuLevels: ThinkingLevel[] = availableThinkingLevels.length
-    ? availableThinkingLevels
-    : ["off"];
+  const thinkingMenuLevels = sessionThinkingMenuLevels(availableThinkingLevels);
   const modelGroups = useMemo(
     () =>
       providers
@@ -236,7 +235,7 @@ export function useComposerModelMenu({
     }
   };
 
-  const selectThinkingLevel = async (level: ThinkingLevel) => {
+  const selectThinkingLevel = async (level: SessionThinkingLevel) => {
     try {
       await configureActiveSession({
         mode,

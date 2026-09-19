@@ -13,6 +13,7 @@ import {
   SETTINGS_NAV_GROUP_LABELS,
   type SettingsNavGroupId,
 } from "../../lib/settings-search";
+import { pluginViewIcon } from "../../lib/plugin-view-icons";
 import {
   IconArchive,
   IconBookOpen,
@@ -23,6 +24,7 @@ import {
   IconGlobe,
   IconInfo,
   IconKeyboard,
+  IconPalette,
   IconSearch,
   IconServer,
   IconSliders,
@@ -280,12 +282,19 @@ export function SettingsPage() {
               {extensions.filter((entry) => {
                 const q = query.trim().toLowerCase();
                 return !q || [entry.label, ...entry.keywords].some((value) => value.toLowerCase().includes(q));
-              }).map((entry) => (
-                <button key={entry.ref} className={cx("settings-nav-item", activeExtension?.ref === entry.ref && "active")} onClick={() => setActiveExtension(entry)}>
-                  <span className="settings-nav-icon"><IconBookOpen size={14} /></span>
-                  <span className="settings-nav-label">{entry.label}</span>
-                </button>
-              ))}
+              }).map((entry) => {
+                const ExtensionIcon = pluginViewIcon(entry.icon) ?? IconPalette;
+                return (
+                  <button
+                    key={entry.ref}
+                    className={cx("settings-nav-item", activeExtension?.ref === entry.ref && "active")}
+                    onClick={() => setActiveExtension(entry)}
+                  >
+                    <span className="settings-nav-icon"><ExtensionIcon size={14} /></span>
+                    <span className="settings-nav-label">{entry.label}</span>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>

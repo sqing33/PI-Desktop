@@ -1,4 +1,26 @@
-import { THINKING_LEVELS, type ThinkingLevel } from "./types.js";
+import {
+  SESSION_THINKING_LEVELS,
+  THINKING_LEVELS,
+  type SessionThinkingLevel,
+  type ThinkingLevel,
+} from "./types.js";
+
+export function isSessionThinkingLevel(value: unknown): value is SessionThinkingLevel {
+  return typeof value === "string" && (SESSION_THINKING_LEVELS as readonly string[]).includes(value);
+}
+
+/** Map omit onto bookkeeping `off` for APIs that only accept canonical levels. */
+export function canonicalThinkingLevel(level: SessionThinkingLevel): ThinkingLevel {
+  return level === "omit" ? "off" : level;
+}
+
+/** Composer menu: do-not-send first, then the binding's enabled canonical levels. */
+export function sessionThinkingMenuLevels(
+  available: readonly ThinkingLevel[] | undefined,
+): SessionThinkingLevel[] {
+  if (!available || available.length === 0) return ["off"];
+  return ["omit", ...available];
+}
 
 export function highestSupportedThinkingLevel(
   levels: readonly ThinkingLevel[] | undefined,

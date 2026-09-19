@@ -2092,14 +2092,17 @@
 }
 
 /*
-  Direct child only. As a descendant selector this also dressed the icon inside
-  the empty state's own CTA button as a 34px faint chip, which ate the glyph and
-  stretched the button.
+  Chip the empty-state glyph on a wrapper, never on the SVG. Lucide icons set
+  inline width/height; padding those attributes crushes the stroke to a blank
+  chip. The CTA inside `.agent-capability-empty-action` keeps its own icon.
 */
-.agent-capability-empty > svg {
+.agent-capability-empty-icon {
+  display: inline-flex;
   width: 34px;
   height: 34px;
-  padding: 8px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
   border-radius: var(--radius-md);
   background: var(--ds-bg-chip);
   color: var(--ds-text-faint);

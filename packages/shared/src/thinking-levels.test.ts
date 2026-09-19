@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   highestSupportedThinkingLevel,
   initialThinkingLevelForBinding,
+  canonicalThinkingLevel,
+  isSessionThinkingLevel,
   nearestSupportedThinkingLevel,
   publishedThinkingLevels,
+  sessionThinkingMenuLevels,
 } from "./thinking-levels.js";
 
 describe("highestSupportedThinkingLevel", () => {
@@ -107,5 +110,17 @@ describe("publishedThinkingLevels", () => {
     ]);
     expect(publishedThinkingLevels({ reasoning: false })).toEqual([]);
     expect(publishedThinkingLevels(undefined)).toEqual([]);
+  });
+});
+
+describe("session thinking omit", () => {
+  it("accepts omit as a session selector without treating it as a capability", () => {
+    expect(isSessionThinkingLevel("omit")).toBe(true);
+    expect(isSessionThinkingLevel("high")).toBe(true);
+    expect(isSessionThinkingLevel("turbo")).toBe(false);
+    expect(sessionThinkingMenuLevels(["low", "high"])).toEqual(["omit", "low", "high"]);
+    expect(sessionThinkingMenuLevels([])).toEqual(["off"]);
+    expect(canonicalThinkingLevel("omit")).toBe("off");
+    expect(canonicalThinkingLevel("high")).toBe("high");
   });
 });

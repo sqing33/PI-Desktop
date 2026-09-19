@@ -587,7 +587,10 @@ criterion-by-criterion report of what was met and the evidence observed.
 ## 5c. Thinking capability and stream contract
 
 - Canonical levels are `off`, `minimal`, `low`, `medium`, `high`, `xhigh`,
-  and `max`.
+  and `max`. Session (and subagent) selectors also accept `omit`, which is
+  not a catalog/binding capability: the runtime keeps agent bookkeeping at
+  `off` and uses the low-level provider stream so no thinking override is
+  synthesized (ADR 0194 / ADR 0295).
 - The bundled models.dev release snapshot is authoritative for published
   reasoning support, thinking-level mapping, limits, input/output modalities,
   pricing, and other model metadata. pi-ai remains responsible for request

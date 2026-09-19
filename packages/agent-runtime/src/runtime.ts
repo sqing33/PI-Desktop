@@ -82,6 +82,7 @@ import type {
   Risk,
   SubagentDefinition,
   SubagentRunStatus,
+  SessionThinkingLevel,
   SubagentThinkingLevel,
   ThinkingLevel,
   ToolTokenUsage,
@@ -154,7 +155,7 @@ import {
   composeModeSystemPrompt,
   DEFAULT_RUNTIME_SYSTEM_PROMPT,
 } from "./mode-prompts.js";
-import { clampThinkingLevel } from "./thinking-level.js";
+import { agentThinkingLevel, clampThinkingLevel, omitThinkingModel } from "./thinking-level.js";
 import {
   alignRetainedReasoningIdentity,
   harvestRetainedReasoning,
@@ -836,7 +837,7 @@ export type AgentRuntimeOptions = {
   /** Durable host turn ID for the current prompt, used by plan identity. */
   turnId?: string;
   provider: RuntimeProviderConfig;
-  thinkingLevel: ThinkingLevel;
+  thinkingLevel: SessionThinkingLevel;
   systemPrompt?: string;
   /** Session-bound workspace root used for path-scoped instruction requests. */
   projectPath?: string;
@@ -888,7 +889,7 @@ export type AgentRuntimeOptions = {
 export type RuntimeMatchConfig = {
   mode: Mode;
   provider: RuntimeProviderConfig;
-  thinkingLevel: ThinkingLevel;
+  thinkingLevel: SessionThinkingLevel;
   pluginTools?: PluginToolDef[];
   pluginSkills?: PluginSkillDef[];
   trustedExtensions?: TrustedExtensionSpec[];
@@ -1471,7 +1472,7 @@ export class DesktopAgentRuntime {
   readonly sessionId: string;
   private mode: Mode;
   private provider: RuntimeProviderConfig;
-  private thinkingLevel: ThinkingLevel;
+  private thinkingLevel: SessionThinkingLevel;
   private host: RuntimeHost;
   private onEvent: (envelope: AgentEventEnvelope) => void;
   private streamSink: StreamCoalescer;
@@ -1835,7 +1836,10 @@ Delegation rules:
           m,
           context,
           hookedOptions,
-          (retryOptions) => this.models.streamSimple(m, context, retryOptions),
+          (retryOptions) =>
+            this.thinkingLevel === "omit"
+              ? this.models.stream(omitThinkingModel(m), context, retryOptions)
+              : this.models.streamSimple(m, context, retryOptions),
           {
             claim: (error, phase) => this.claimProviderRetry(error, phase),
             headers: () => this.providerRetryHeaders,
@@ -1868,7 +1872,7 @@ Delegation rules:
         systemPrompt: this.composeSystemPrompt(),
         model,
         tools,
-        thinkingLevel: this.thinkingLevel,
+        thinkingLevel: agentThinkingLevel(this.thinkingLevel),
         messages: this.liveSessionContext().messages,
       },
       // Plan transitions must be the only tool call in an assistant batch.
@@ -2278,7 +2282,7 @@ Delegation rules:
     });
     this.thinkingLevel = clampThinkingLevel(this.provider, this.thinkingLevel);
     this.agent.state.model = model;
-    this.agent.state.thinkingLevel = this.thinkingLevel;
+    this.agent.state.thinkingLevel = agentThinkingLevel(this.thinkingLevel);
   }
 
   async activateTrustedExtensionAgent(agentKey: string, modelId: string): Promise<boolean> {
@@ -2349,7 +2353,7 @@ Delegation rules:
       getModel: () => runtime.model,
       setModel: (model) => runtime.setExtensionModel(model),
       modelRegistry: runtime.extensionModelRegistry(),
-      getThinkingLevel: () => runtime.thinkingLevel,
+      getThinkingLevel: () => agentThinkingLevel(runtime.thinkingLevel),
       setThinkingLevel: (level) => {
         runtime.thinkingLevel = clampThinkingLevel(runtime.provider, level as ThinkingLevel);
       },
@@ -6346,7 +6350,7 @@ Delegation rules:
       withCompactionRequestHeaders(this.models, this.provider, this.sessionId),
       this.model,
       undefined,
-      this.thinkingLevel,
+      agentThinkingLevel(this.thinkingLevel),
       // Without a policy pi-ai returns the first failed response as-is, which
       // made a single dropped stream or 503 discard the whole summary (#543).
       // pi's classifier decides what is transient; the waits honour `signal`.

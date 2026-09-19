@@ -28,7 +28,7 @@ test("model and reasoning selection return to the root without closing", () => {
   assert.match(composerSource, /setQuery\(""\);[\s\S]*?setView\("root"\)/);
   assert.match(composerSource, /const selectThinkingLevel = async/);
   assert.match(composerSource, /setView\("root"\);[\s\S]*?setThinkingHighlight\(-1\)/);
-  assert.match(composerSource, /const thinkingMenuLevels: ThinkingLevel\[\] = availableThinkingLevels\.length/);
+  assert.match(composerSource, /const thinkingMenuLevels = sessionThinkingMenuLevels\(availableThinkingLevels\)/);
 });
 
 test("opening the combined menu preloads model metadata before its submenu", () => {

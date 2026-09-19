@@ -16,7 +16,9 @@
   keyboard navigation, open the entry, change the variable, select/reselect the
   theme, restart, then disable, reload and uninstall the plugin while its entry
   is active.
-- **Expected:** Only the declared variable rule changes after Apply; static
+- **Expected:** The Extensions rail draws the destination's host icon token
+  (`palette` / Lucide Palette), not a Skills book glyph and not plugin SVG.
+  Only the declared variable rule changes after Apply; static
   `plugin-asset://` URLs remain valid; the value restores after restart; host-
   rendered cards retain the scenic backdrop behind their translucent content,
   have no opaque native rectangle, and leave Windows/Linux minimize/maximize
@@ -6736,7 +6738,8 @@ identify the platform validation still needed.
     only, later refreshes dim the rows already on screen and announce the
     refresh, busy state is confined to the row with the in-flight request, and
     counts are exposed to assistive technology. Empty states stay centered
-    inside the panel without a decorative frame and offer the page's primary
+    inside the panel without a decorative frame, show a host Lucide icon in a
+    chip wrapper (not a padded raw SVG), and offer the page's primary
     action, and no capability-specific color system is introduced.
   - Create, edit, and delete are available for all three capabilities without
     leaving Settings. New capabilities land at the level the filter points at,
@@ -10954,6 +10957,24 @@ are withdrawn with ADR 0165.
 - **Acceptance**: B (model configuration) + C (chat/stream) + Quality
 - **Milestone**: M6+
 - **Status**: Unit/source-contract-covered; full UI journey Draft (run only in a capable environment when this surface changes)
+
+#### E2E-203a: Session thinking omit sends no provider override
+
+- **Preconditions**: A configured reasoning model is selected in Composer.
+- **Steps**: 1) Open the model × reasoning menu and confirm `omit` is the first
+  reasoning option, followed by the binding's enabled canonical levels.
+  2) Choose `omit` and confirm the chip shows `omit` and the session stores
+  `thinkingLevel: omit`. 3) Send a turn and inspect the outbound request.
+  4) Choose explicit `off` and send again.
+- **Expected**: `omit` persists and the request has no thinking/reasoning field.
+  Explicit `off` still serializes a disable. A non-reasoning model keeps an
+  `off`-only menu.
+- **Specs linked**: `03-runtime/01-ipc-protocol.md`,
+  `03-runtime/02-agent-runtime.md`, `03-runtime/13-model-catalog-and-selection.md`,
+  ADR 0295 / D456
+- **Acceptance**: C (chat/stream) + Quality
+- **Milestone**: M6+
+- **Status**: Unit/source-contract-covered; full UI journey Draft
 
 #### E2E-211: Windows portable exe launches without an installer (D364)
 
