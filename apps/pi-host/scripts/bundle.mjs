@@ -71,6 +71,15 @@ try {
 } catch {
   console.warn("node-pty not installed; the bundle ships without terminals");
 }
+// The browser UI ships only when it was built; a host bundle without it still
+// runs and simply has no web channel to serve.
+const webDist = join(root, "apps/web/dist");
+if (existsSync(webDist)) {
+  cpSync(webDist, join(out, "dist-web"), { recursive: true });
+  console.log("bundled web UI into dist-web");
+} else {
+  console.warn("apps/web/dist not found; the bundle ships without the browser UI");
+}
 writeFileSync(join(out, "package.json"), `${JSON.stringify({ name: "pi-host", version, type: "module", bin: { "pi-host": "./pi-host.js" } }, null, 2)}\n`);
 writeFileSync(
   join(out, "install.sh"),

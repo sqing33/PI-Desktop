@@ -8,6 +8,7 @@ import { startPiHost } from "./app.js";
  * stdout carries exactly the lines a bootstrap script parses:
  *   PI_HOST_READY {"hostId":..,"port":..,"version":..}
  *   PI_HOST_PAIRING_TOKEN {"token":..,"expiresAt":..}   (with --pair)
+ *   PI_HOST_WEB_READY {"host":..,"port":..}            (with --web)
  * Everything else is structured stderr.
  */
 async function main(): Promise<void> {
@@ -27,6 +28,16 @@ async function main(): Promise<void> {
         "  --browse-root <dir>       folder-picker root (default home)",
         "  --log-level <level>       info | warn | error",
         "",
+        "  --web                    serve the browser chat UI over HTTP",
+        "  --web-host <addr>        web bind address (default 127.0.0.1)",
+        "  --web-port <n>           web port (default 8080)",
+        "  --web-root <dir>         web UI static assets (default: bundled dist-web)",
+        "",
+        "  The web channel authenticates with a cookie instead of a bearer header",
+        "  because a browser WebSocket cannot set one. Reach it over Tailscale or",
+        "  another private overlay, or put it behind a TLS reverse proxy.",
+        "  --log-level <level>       info | warn | error",
+        "",
       ].join("\n"),
     );
     return;
@@ -34,6 +45,9 @@ async function main(): Promise<void> {
   const config = resolveConfig(args);
   const app = await startPiHost(config);
   process.stdout.write(`PI_HOST_READY ${JSON.stringify({ hostId: app.hostId, host: app.address.host, port: app.address.port, version: (await import("@pi-desktop/shared")).APP_VERSION })}\n`);
+  if (app.webAddress) {
+    process.stdout.write(`PI_HOST_WEB_READY ${JSON.stringify(app.webAddress)}\n`);
+  }
   if (config.pair) {
     const pairing = await app.issuePairingToken(config.pairingLifetimeMs);
     process.stdout.write(`PI_HOST_PAIRING_TOKEN ${JSON.stringify(pairing)}\n`);

@@ -150,6 +150,16 @@ export class DeviceTokenAuthenticator {
     if (input.urlHasToken) return null;
     const token = bearerToken(input.authorization);
     if (!token) return null;
+    return this.authenticateToken(token, input.connectionId);
+  }
+
+  /**
+   * Resolve a bare device or pairing token to a `ConnectionAuth`. The caller
+   * owns where the token came from — it must never be a URL (security §3.1);
+   * bindings that cannot carry an `Authorization` header (e.g. the browser
+   * cookie profile) validate the token over their own channel and call this.
+   */
+  async authenticateToken(token: string, connectionId: string): Promise<ConnectionAuth | null> {
     const tokenHash = hashToken(token);
     if (isDeviceToken(token)) {
       const device = await this.store.findDeviceByTokenHash(tokenHash);
@@ -162,7 +172,7 @@ export class DeviceTokenAuthenticator {
           subject: device.deviceId,
           roles: [...device.roles],
           pairedDevice: true,
-          connectionId: input.connectionId,
+          connectionId,
         },
       };
     }
@@ -172,7 +182,7 @@ export class DeviceTokenAuthenticator {
       return {
         kind: "pairing",
         tokenHash,
-        principal: { subject: `pairing:${tokenHash.slice(0, 12)}`, roles: [], connectionId: input.connectionId },
+        principal: { subject: `pairing:${tokenHash.slice(0, 12)}`, roles: [], connectionId },
       };
     }
     return null;

@@ -42,6 +42,8 @@ jobs:
           pnpm --filter @pi-desktop/agent-runtime bundle
           pnpm --filter @pi-desktop/pi-host build
 
+      - name: Build browser client
+        run: pnpm --filter @pi-desktop/web build
       - name: Assemble pi-host bundle
         run: node apps/pi-host/scripts/bundle.mjs --platform darwin --arch arm64
 

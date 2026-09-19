@@ -18,11 +18,48 @@ export type PiHostConfig = {
   pairingLifetimeMs: number;
   /** Where the folder picker may browse; defaults to the user's home. */
   browseRoot: string;
+
+  /**
+   * Serve the browser chat UI over HTTP. Off by default: without this flag
+   * pi-host behaves exactly as before and opens no network listener. The web
+   * channel authenticates with a cookie instead of a bearer header because a
+   * browser `WebSocket` cannot set one.
+   */
+  web: boolean;
+  webHost: string;
+  webPort: number;
+  /** Static assets for the web UI; resolved against the bundle when omitted. */
+  webRoot: string | null;
   logLevel: "info" | "warn" | "error";
+  /** Non-fatal configuration advisories the host logs once at startup. */
+  warnings: string[];
 };
 
 const DEFAULT_PORT = 0;
 const DEFAULT_PAIRING_LIFETIME_MS = 10 * 60 * 1000;
+/**
+ * Web UI port. Deliberately distinct from the loopback RACP-WS port so both
+ * channels can run at once; the web channel is the one a browser reaches.
+ */
+const DEFAULT_WEB_PORT = 8080;
+const DEFAULT_WEB_HOST = "127.0.0.1";
+
+/** Where a bundle or a source checkout keeps the built web UI, first hit wins. */
+export function webRootCandidates(root = here()): string[] {
+  return [
+    process.env.PI_HOST_WEB_ROOT ?? "",
+    join(root, "dist-web"),
+    join(root, "../dist-web"),
+    join(root, "../../../apps/web/dist"),
+  ].filter(Boolean);
+}
+
+function firstExistingDirectory(candidates: string[]): string | null {
+  for (const candidate of candidates) {
+    if (candidate && existsSync(resolve(candidate))) return resolve(candidate);
+  }
+  return null;
+}
 
 function here(): string {
   return dirname(fileURLToPath(import.meta.url));
@@ -88,6 +125,21 @@ export function resolveConfig(args: CliArgs, env: NodeJS.ProcessEnv = process.en
     throw Object.assign(new Error(`invalid port ${String(args.port ?? env.PI_HOST_PORT)}`), { errorCode: "INVALID_ARGUMENT" });
   }
   const level = String(args["log-level"] ?? env.PI_HOST_LOG_LEVEL ?? "info");
+  const web = args.web === true || args.web === "true" || env.PI_HOST_WEB === "true";
+  const webPort = Number(args["web-port"] ?? env.PI_HOST_WEB_PORT ?? DEFAULT_WEB_PORT);
+  if (!Number.isInteger(webPort) || webPort < 1 || webPort > 65_535) {
+    throw Object.assign(new Error(`invalid web port ${String(args["web-port"] ?? env.PI_HOST_WEB_PORT)}`), { errorCode: "INVALID_ARGUMENT" });
+  }
+  const webHost = String(args["web-host"] ?? env.PI_HOST_WEB_HOST ?? DEFAULT_WEB_HOST);
+  const webRootArg = args["web-root"] ?? env.PI_HOST_WEB_ROOT;
+  const webRoot = webRootArg ? resolve(String(webRootArg)) : firstExistingDirectory(webRootCandidates());
+  // Warnings surface through app.ts, which owns the logger; resolveConfig stays
+  // pure so it stays testable and free of I/O side effects.
+  const warnings: string[] = [];
+  if (web && !webRoot) warnings.push("web mode has no static assets; the API is reachable but / will 404");
+  if (web && webHost !== "127.0.0.1" && webHost !== "localhost" && webHost !== "::1") {
+    warnings.push(`web mode binds the non-loopback address ${webHost}; put it behind TLS or a private overlay network`);
+  }
   return {
     dataDir,
     host: String(args.host ?? env.PI_HOST_BIND ?? "127.0.0.1"),
@@ -99,5 +151,10 @@ export function resolveConfig(args: CliArgs, env: NodeJS.ProcessEnv = process.en
     pairingLifetimeMs: Number(args["pairing-lifetime-ms"] ?? DEFAULT_PAIRING_LIFETIME_MS),
     browseRoot: resolve(String(args["browse-root"] ?? env.PI_HOST_BROWSE_ROOT ?? homedir())),
     logLevel: level === "warn" || level === "error" ? level : "info",
+    web,
+    webHost,
+    webPort,
+    webRoot,
+    warnings,
   };
 }

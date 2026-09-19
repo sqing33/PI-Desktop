@@ -13,7 +13,7 @@ import {
   createHostSessionPort,
   listPendingToolRequests,
 } from "@pi-desktop/host-runtime";
-import { DeviceTokenAuthenticator, RacpServer, bindRacpWebSocket, type RacpHostOperations, type WsBinding } from "@pi-desktop/racp";
+import { DeviceTokenAuthenticator, RacpServer, bindRacpHttp, bindRacpWebSocket, type HttpBinding, type RacpHostOperations, type WsBinding } from "@pi-desktop/racp";
 import { APP_VERSION, type AgentEventEnvelope } from "@pi-desktop/shared";
 
 import type { PiHostConfig } from "./config.js";
@@ -25,6 +25,8 @@ import { TerminalService, loadPty } from "./terminal.js";
 export type PiHostApp = {
   hostId: string;
   address: { host: string; port: number };
+  /** Present only when `--web` is on; the address a browser reaches. */
+  webAddress?: { host: string; port: number };
   agentHost: AgentHost;
   runtime: RuntimeService;
   authenticator: DeviceTokenAuthenticator;
@@ -254,11 +256,38 @@ export async function startPiHost(config: PiHostConfig, options: { log?: HostLog
     await state.host?.dispose();
     throw error;
   }
-  log("info", "pi-host ready", { hostId, host: binding.address.host, port: binding.address.port, version: APP_VERSION, terminal: Boolean(terminal) });
+  // The browser channel is opt-in and independent of the loopback binding: it
+  // serves the web UI and upgrades /v1/racp/ws for cookie-authenticated clients.
+  let webBinding: HttpBinding | null = null;
+  if (config.web) {
+    try {
+      webBinding = await bindRacpHttp({
+        server,
+        authenticator,
+        host: config.webHost,
+        port: config.webPort,
+        ...(config.webRoot ? { webRoot: config.webRoot } : {}),
+        log,
+      });
+    } catch (error) {
+      state.stopping = true;
+      server.close();
+      await binding.close();
+      await terminal?.closeAll();
+      plans.dispose();
+      await runtime.dispose();
+      await state.sidecar?.dispose();
+      await state.host?.dispose();
+      throw error;
+    }
+  }
+  for (const warning of config.warnings) log("warn", warning, { web: config.web });
+  log("info", "pi-host ready", { hostId, host: binding.address.host, port: binding.address.port, version: APP_VERSION, terminal: Boolean(terminal), web: webBinding?.address });
 
   return {
     hostId,
     address: binding.address,
+    ...(webBinding ? { webAddress: webBinding.address } : {}),
     agentHost,
     runtime,
     authenticator,
@@ -270,6 +299,7 @@ export async function startPiHost(config: PiHostConfig, options: { log?: HostLog
       state.stopping = true;
       log("info", "pi-host stopping");
       server.close();
+      await webBinding?.close();
       await binding.close();
       await terminal?.closeAll();
       plans.dispose();

@@ -26,6 +26,28 @@ describe("config", () => {
     expect(() => resolveConfig({ "host-core": "/bin/hc", sidecar: "/s.js", port: "abc" }, {})).toThrow(/invalid port/);
     expect(resolveConfig({ "host-core": "/bin/hc", sidecar: "/s.js", "log-level": "warn" }, {}).logLevel).toBe("warn");
   });
+
+  it("keeps the web channel off by default and parses its flags", () => {
+    const base = { "host-core": "/bin/hc", sidecar: "/s.js" };
+    const off = resolveConfig({ ...base, "data-dir": "/data" }, {});
+    expect(off.web).toBe(false);
+    expect(off.webPort).toBe(8080);
+    expect(off.webHost).toBe("127.0.0.1");
+    expect(off.warnings).toEqual([]);
+
+    const on = resolveConfig({ ...base, "data-dir": "/data", web: true, "web-port": "9000", "web-host": "127.0.0.1" }, {});
+    expect(on.web).toBe(true);
+    expect(on.webPort).toBe(9000);
+    expect(() => resolveConfig({ ...base, "data-dir": "/data", web: true, "web-port": "70000" }, {})).toThrow(/invalid web port/);
+    expect(() => resolveConfig({ ...base, "data-dir": "/data", "web-port": "0" }, {})).toThrow(/invalid web port/);
+  });
+
+  it("warns about a non-loopback web bind", () => {
+    const base = { "data-dir": "/data", "host-core": "/bin/hc", sidecar: "/s.js", web: true, "web-root": "/tmp/web-assets" };
+    const remote = resolveConfig({ ...base, "web-host": "100.64.0.1" }, { PI_HOST_WEB_ROOT: "" });
+    expect(remote.web).toBe(true);
+    expect(remote.warnings.some((line) => line.includes("non-loopback"))).toBe(true);
+  });
 });
 
 describe("identity and credentials", () => {
