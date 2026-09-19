@@ -213,4 +213,35 @@ describe("RACP web HTTP binding", () => {
     expect((await fetch(`${base}/`)).status).toBe(404);
     expect((await fetch(`${base}/anything.js`)).status).toBe(404);
   });
+
+  it("re-checks the credential so a revoked device cannot reuse its cookie", async () => {
+    const { binding, base, h } = await startBinding();
+    const login = await fetch(`${base}/v1/racp/auth/login`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token: OWNER_TOKEN }),
+    });
+    const cookie = /pi_web_session=([^;]+)/.exec(login.headers.get("set-cookie") ?? "")?.[1] ?? "";
+    expect(cookie).not.toBe("");
+
+    const status = async (): Promise<number> =>
+      new Promise((resolve) => {
+        const ws = new WebSocket(`${base.replace("http", "ws")}/v1/racp/ws`, [RACP_WS_SUBPROTOCOL], {
+          headers: { Cookie: `pi_web_session=${cookie}` },
+        });
+        ws.on("unexpected-response", (_q, res) => { ws.terminate(); resolve(res.statusCode); });
+        ws.on("open", () => { ws.close(); resolve(0); });
+        ws.on("error", () => resolve(-1));
+      });
+    // 0 means the upgrade succeeded and the socket opened.
+    expect(await status()).toBe(0);
+
+    // Revoke the device; the already-issued session must stop working.
+    h.store.listDevices().then((devices) => {
+      for (const device of devices) h.store.revokeDevice(device.deviceId, new Date().toISOString());
+    });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(await status()).toBe(401);
+    await binding.close();
+  });
 });

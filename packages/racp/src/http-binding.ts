@@ -7,7 +7,7 @@ import { realpath } from "node:fs/promises";
 import { RACP_WS_PATH, RACP_WS_SUBPROTOCOL, type RacpRole } from "@pi-desktop/shared";
 import { WebSocket, WebSocketServer } from "ws";
 
-import { type ConnectionAuth, type DeviceTokenAuthenticator } from "./auth.js";
+import { isLoopbackAddress, type ConnectionAuth, type DeviceTokenAuthenticator } from "./auth.js";
 import type { RacpServer, ServerConnectionTransport } from "./server.js";
 
 /** Cookie name the browser profile uses for its session id. */
@@ -23,6 +23,8 @@ const DEFAULT_HEARTBEAT_MS = 30_000;
 const MAX_LOGIN_BODY_BYTES = 4_096;
 const LOGIN_RATE_LIMIT = 10;
 const LOGIN_RATE_WINDOW_MS = 60_000;
+/** Bounds the per-peer rate-limit table so it cannot grow without limit. */
+const LOGIN_RATE_MAX_KEYS = 10_000;
 
 export type HttpBindingOptions = {
   server: RacpServer;
@@ -199,6 +201,10 @@ export async function bindRacpHttp(options: HttpBindingOptions): Promise<HttpBin
   const sessionTtlMs = options.sessionTtlMs ?? DEFAULT_SESSION_TTL_MS;
   const heartbeatMs = options.heartbeatMs ?? DEFAULT_HEARTBEAT_MS;
   const webRoot = options.webRoot ?? null;
+  // A non-loopback bind means the operator exposed this beyond the machine, so
+  // the session cookie must not travel over a plaintext channel.
+  const secureSuffix = isLoopbackAddress(host) ? "" : "; Secure";
+  let lastLoginSweepAt = 0;
   const sessions = new Map<string, WebSession>();
   const loginAttempts = new Map<string, { count: number; resetAt: number }>();
   const sockets = new Set<WebSocket>();
@@ -224,6 +230,14 @@ export async function bindRacpHttp(options: HttpBindingOptions): Promise<HttpBin
 
   const takeLoginAttempt = (ip: string): boolean => {
     const now = Date.now();
+    // Sweep first: the counter map is keyed by peer address, so without this
+    // it grows for the process lifetime and is a memory-exhaustion vector.
+    if (loginAttempts.size > 0 && (loginAttempts.size > LOGIN_RATE_MAX_KEYS || now - lastLoginSweepAt > LOGIN_RATE_WINDOW_MS)) {
+      for (const [key, value] of loginAttempts) {
+        if (value.resetAt <= now) loginAttempts.delete(key);
+      }
+      lastLoginSweepAt = now;
+    }
     const entry = loginAttempts.get(ip);
     if (!entry || entry.resetAt <= now) {
       loginAttempts.set(ip, { count: 1, resetAt: now + LOGIN_RATE_WINDOW_MS });
@@ -284,7 +298,7 @@ export async function bindRacpHttp(options: HttpBindingOptions): Promise<HttpBin
       200,
       { ok: true, subject: issued.subject, roles: issued.roles },
       {
-        "Set-Cookie": `${RACP_WEB_SESSION_COOKIE}=${issued.cookieId}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAge}`,
+        "Set-Cookie": `${RACP_WEB_SESSION_COOKIE}=${issued.cookieId}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAge}${secureSuffix}`,
         "Cache-Control": "no-store",
       },
     );
@@ -351,28 +365,39 @@ export async function bindRacpHttp(options: HttpBindingOptions): Promise<HttpBin
       const cookieId = parseSessionCookie(request.headers.cookie);
       const session = cookieId ? sessions.get(cookieId) : undefined;
       if (!session) return reject(401, "Unauthorized");
-      wss.handleUpgrade(request, socket, head, (ws) => {
-        sockets.add(ws);
-        ws.once("close", () => sockets.delete(ws));
-        const connection = options.server.accept(session.auth, wsTransport(ws));
-        if (!connection) return;
-        // Heartbeat (spec §11.1): a peer that stops answering pings is dropped.
-        let alive = true;
-        ws.on("pong", () => {
-          alive = true;
+      // Re-check the device on every upgrade so a revoked credential cannot
+      // keep an already-issued cookie working for the rest of its lifetime.
+      void options.authenticator
+        .authenticateToken(session.deviceToken, "web-upgrade")
+        .then((current) => {
+          if (!current) return reject(401, "Unauthorized");
+          wss.handleUpgrade(request, socket, head, (ws) => {
+            sockets.add(ws);
+            ws.once("close", () => sockets.delete(ws));
+            const connection = options.server.accept(session.auth, wsTransport(ws));
+            if (!connection) return;
+            // Heartbeat (spec §11.1): a peer that stops answering pings is dropped.
+            let alive = true;
+            ws.on("pong", () => {
+              alive = true;
+            });
+            const heartbeat = setInterval(() => {
+              if (ws.readyState !== WebSocket.OPEN) return;
+              if (!alive) {
+                ws.terminate();
+                return;
+              }
+              alive = false;
+              ws.ping();
+            }, heartbeatMs);
+            heartbeat.unref?.();
+            ws.once("close", () => clearInterval(heartbeat));
+          });
+        })
+        .catch((error) => {
+          options.log("error", "racp web credential recheck failed", { error: String(error) });
+          reject(500, "Internal Server Error");
         });
-        const heartbeat = setInterval(() => {
-          if (ws.readyState !== WebSocket.OPEN) return;
-          if (!alive) {
-            ws.terminate();
-            return;
-          }
-          alive = false;
-          ws.ping();
-        }, heartbeatMs);
-        heartbeat.unref?.();
-        ws.once("close", () => clearInterval(heartbeat));
-      });
     })().catch((error) => {
       options.log("error", "racp web upgrade failed", { error: String(error) });
       socket.destroy();

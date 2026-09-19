@@ -98,6 +98,16 @@ export default function App(): React.JSX.Element {
     });
   }, [phase, client, api, refreshSessions]);
 
+  // A reconnect replaces the socket, so every subscription is gone. Rebuild them
+  // from the authoritative snapshot instead of trusting stale local state.
+  useEffect(() => {
+    if (phase !== "authenticated") return;
+    return client.onReconnect(() => {
+      void api.subscribeHost().catch(() => undefined);
+      void refreshSessions();
+    });
+  }, [phase, client, api, refreshSessions]);
+
   async function handleLogin(token: string): Promise<void> {
     setAuthError(null);
     try {

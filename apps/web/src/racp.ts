@@ -38,6 +38,7 @@ export class RacpRequestError extends Error {
 type EventListener = (envelope: RacpEventEnvelope) => void;
 type ServerRequestListener = (method: string, params: unknown) => void;
 type StateListener = (state: RacpConnectionState, detail: string) => void;
+type ReconnectListener = () => void;
 
 interface PendingRequest {
   resolve: (value: unknown) => void;
@@ -69,11 +70,14 @@ export class RacpClient {
   private eventListeners = new Set<EventListener>();
   private serverRequestListeners = new Set<ServerRequestListener>();
   private stateListeners = new Set<StateListener>();
+  private reconnectListeners = new Set<ReconnectListener>();
   private state: RacpConnectionState = "disconnected";
   private reconnectAttempts = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private closedByUser = false;
   private initializeResult: RacpInitializeResult | null = null;
+  /** True after the first successful initialize, so a reconnect can re-subscribe. */
+  private everConnected = false;
 
   get connectionState(): RacpConnectionState {
     return this.state;
@@ -99,6 +103,15 @@ export class RacpClient {
     return () => this.stateListeners.delete(listener);
   }
 
+
+  /**
+   * Fires after a reconnect completes initialize. Every subscription lives on
+   * the old socket and is gone once it closed, so callers re-issue them here.
+   */
+  onReconnect(listener: ReconnectListener): () => void {
+    this.reconnectListeners.add(listener);
+    return () => this.reconnectListeners.delete(listener);
+  }
   private setState(state: RacpConnectionState, detail = ""): void {
     this.state = state;
     for (const listener of this.stateListeners) listener(state, detail);
@@ -215,6 +228,16 @@ export class RacpClient {
         protocolVersion: PROTOCOL_VERSION,
         client: { name: CLIENT_NAME, version: CLIENT_VERSION },
         bindings: ["RACP-WS"],
+        // The schema requires this object; omitting it fails initialize with
+        // INVALID_ARGUMENT. Keep it aligned with the desktop client's set.
+        capabilities: {
+          eventReplay: true,
+          approvals: true,
+          inputRequests: true,
+          turnQueue: true,
+          hostEvents: true,
+          history: true,
+        },
       });
       if (!isRecord(result)) throw new RacpRequestError("PROTOCOL_MISMATCH", "initialize 返回结果无法解析");
       const principalRecord = isRecord(result.principal) ? result.principal : {};
@@ -232,6 +255,16 @@ export class RacpClient {
       this.notify(INITIALIZED_NOTIFICATION, {});
       this.reconnectAttempts = 0;
       this.setState("connected");
+      if (this.everConnected) {
+        for (const listener of this.reconnectListeners) {
+          try {
+            listener();
+          } catch {
+            // A resubscribe failure must not break an already-live connection.
+          }
+        }
+      }
+      this.everConnected = true;
     } catch (error) {
       if (error instanceof RacpRequestError && (error.code === "UNAUTHORIZED" || error.code === "HTTP_401")) {
         // Auth cookie missing/expired: park the retry loop, user must log in.
