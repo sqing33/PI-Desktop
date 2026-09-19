@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "id": "local.chat-prose-width",
+  "name": "对话文字宽度",
+  "version": "0.1.0",
+  "description": "调整对话区域内消息文字的显示宽度；支持自定义背景图、模糊与界面朦胧程度。对话区域自动同步加宽。",
+  "author": "You",
+  "main": "main.js",
+  "contributes": {
+    "settings": [
+      {
+        "key": "proseWidth",
+        "title": "消息文字宽度",
+        "description": "消息文字行的最大显示宽度（单位 px）；对话区域会自动同步加宽。",
+        "type": "select",
+        "default": "720",
+        "enum": [
+          { "label": "480 px", "value": "480" },
+          { "label": "560 px", "value": "560" },
+          { "label": "640 px", "value": "640" },
+          { "label": "720 px（默认）", "value": "720" },
+          { "label": "840 px", "value": "840" },
+          { "label": "960 px", "value": "960" },
+          { "label": "1080 px", "value": "1080" },
+          { "label": "1200 px", "value": "1200" }
+        ]
+      },
+      {
+        "key": "bgImage",
+        "title": "背景图路径",
+        "description": "本机图片的绝对路径（jpg/png/webp，≤4MB），留空则不显示背景图。",
+        "type": "string",
+        "default": ""
+      },
+      {
+        "key": "bgBlur",
+        "title": "背景模糊程度",
+        "description": "背景图的高斯模糊半径（单位 px），0 为不模糊。",
+        "type": "select",
+        "default": "0",
+        "enum": [
+          { "label": "0（清晰）", "value": "0" },
+          { "label": "2 px", "value": "2" },
+          { "label": "4 px", "value": "4" },
+          { "label": "6 px", "value": "6" },
+          { "label": "8 px", "value": "8" },
+          { "label": "10 px", "value": "10" },
+          { "label": "12 px", "value": "12" },
+          { "label": "14 px", "value": "14" },
+          { "label": "16 px", "value": "16" },
+          { "label": "20 px", "value": "20" },
+          { "label": "24 px", "value": "24" },
+          { "label": "28 px", "value": "28" },
+          { "label": "32 px", "value": "32" }
+        ]
+      },
+      {
+        "key": "bgSurface",
+        "title": "界面表面不透明度",
+        "description": "面板表面的朦胧程度：0%=最透明（背景最清晰，文字对比低），50%=均衡，100%=不透明（背景不可见）。",
+        "type": "select",
+        "default": "50",
+        "enum": [
+          { "label": "0%（最透明）", "value": "0" },
+          { "label": "20%", "value": "20" },
+          { "label": "35%", "value": "35" },
+          { "label": "50%（均衡）", "value": "50" },
+          { "label": "70%", "value": "70" },
+          { "label": "85%", "value": "85" },
+          { "label": "100%（不透明）", "value": "100" }
+        ]
+      }
+    ]
+  },
+  "permissions": ["ui.theme"],
+  "engines": {
+    "piDesktop": ">=0.1.0"
+  },
+  "activationEvents": ["onStartup"]
+}
